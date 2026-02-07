@@ -1,0 +1,7 @@
+{
+  "name": "ask amine - Engineering Assistant",
+  "description": "A simplified AI-powered assistant for engineers and designers.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
