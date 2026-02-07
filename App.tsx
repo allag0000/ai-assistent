@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { 
-  Menu, 
-  X
+  MessageSquare, 
+  Image as ImageIcon,
+  Settings,
+  Sparkles
 } from 'lucide-react';
-import Sidebar from './components/Sidebar';
 import ChatWindow from './components/ChatWindow';
 import Visualizer from './components/Visualizer';
 
@@ -16,56 +16,66 @@ const HeaderLogo = () => (
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'chat' | 'visualizer'>('chat');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
-    <div className="flex h-screen bg-slate-950 text-slate-200 overflow-hidden font-sans" dir="rtl">
-      {/* Sidebar Component */}
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-      />
-
-      {/* Main Content */}
-      <main className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'md:mr-72' : 'mr-0'} w-full`}>
-        {/* Header */}
-        <header className="h-20 glass-effect flex items-center justify-between px-4 md:px-8 border-b border-white/5 sticky top-0 z-10 shrink-0">
-          <div className="flex items-center gap-4">
-            <button 
-              className="md:hidden p-2 hover:bg-slate-800 rounded-lg transition-colors"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            >
-              {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-            <div className="w-10 h-10 p-2 bg-indigo-500/10 rounded-xl flex items-center justify-center border border-indigo-500/20 shadow-inner">
-              <HeaderLogo />
-            </div>
-            <div>
-              <h2 className="text-md md:text-lg font-bold tracking-tight text-white leading-none">
-                {activeTab === 'chat' ? 'المساعد الهندسي' : 'مُصوّر الرندر'}
-              </h2>
-              <p className="text-[10px] text-slate-500 font-medium hidden sm:block mt-1">بواسطة الذكاء الاصطناعي - ask amine</p>
+    <div className="flex flex-col h-full bg-slate-950 text-slate-200 font-sans select-none" dir="rtl">
+      {/* App Header - More Compact */}
+      <header className="h-16 glass-effect flex items-center justify-between px-5 border-b border-white/5 shrink-0 z-20">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 p-1.5 bg-indigo-500/10 rounded-lg flex items-center justify-center border border-indigo-500/20 shadow-inner">
+            <HeaderLogo />
+          </div>
+          <div>
+            <h1 className="text-sm font-bold text-white tracking-tight">أمين - AI</h1>
+            <div className="flex items-center gap-1.5 text-[9px] text-emerald-400 font-bold uppercase">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              متصل الآن
             </div>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-xl border border-emerald-500/20 text-[10px] md:text-xs font-bold">
-              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              أمين متصل
-            </div>
-          </div>
-        </header>
-
-        {/* Dynamic View */}
-        <div className="flex-1 overflow-hidden relative">
-          {activeTab === 'chat' ? (
-            <ChatWindow />
-          ) : (
-            <Visualizer />
-          )}
         </div>
+        <button className="p-2 text-slate-400 hover:text-white transition-colors">
+          <Settings size={18} />
+        </button>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-hidden relative pb-20">
+        {activeTab === 'chat' ? (
+          <ChatWindow />
+        ) : (
+          <Visualizer />
+        )}
       </main>
+
+      {/* Bottom Navigation Bar */}
+      <nav className="fixed bottom-0 left-0 right-0 h-20 glass-effect border-t border-white/5 flex items-center justify-around px-4 pb-2 z-30">
+        <button 
+          onClick={() => setActiveTab('chat')}
+          className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'chat' ? 'text-indigo-400 scale-110' : 'text-slate-500'}`}
+        >
+          <div className={`p-2 rounded-xl transition-colors ${activeTab === 'chat' ? 'bg-indigo-500/10' : ''}`}>
+            <MessageSquare size={22} />
+          </div>
+          <span className="text-[10px] font-bold">المحادثة</span>
+        </button>
+
+        <div className="relative -top-6">
+           <div className="absolute inset-0 bg-indigo-600 blur-xl opacity-20 animate-pulse" />
+           <div className="w-14 h-14 bg-indigo-600 rounded-full flex items-center justify-center shadow-xl shadow-indigo-600/40 border-4 border-slate-950 relative z-10">
+              <Sparkles className="text-white" size={24} />
+           </div>
+        </div>
+
+        <button 
+          onClick={() => setActiveTab('visualizer')}
+          className={`flex flex-col items-center gap-1 transition-all duration-300 ${activeTab === 'visualizer' ? 'text-indigo-400 scale-110' : 'text-slate-500'}`}
+        >
+          <div className={`p-2 rounded-xl transition-colors ${activeTab === 'visualizer' ? 'bg-indigo-500/10' : ''}`}>
+            <ImageIcon size={22} />
+          </div>
+          <span className="text-[10px] font-bold">الرندر</span>
+        </button>
+      </nav>
     </div>
   );
 };

@@ -3,10 +3,10 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  // هذا السطر ضروري ليعمل الموقع على GitHub Pages أو أي استضافة بمجلد فرعي
   base: './',
   define: {
-    'process.env.API_KEY': JSON.stringify(process.env.API_KEY || '')
+    // نستخدم التسمية التقليدية لضمان وصول القيمة من بيئة Netlify إلى الكود أثناء البناء
+    'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
   },
   build: {
     outDir: 'dist',

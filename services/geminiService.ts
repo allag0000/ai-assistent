@@ -1,71 +1,67 @@
+/**
+ * محاكي الخدمة الهندسية - يعمل بدون API
+ */
 
-import { GoogleGenAI } from "@google/genai";
+const engineeringResponses = [
+  "بناءً على خبرتي الهندسية، أنصحك دائماً بالتأكد من توزيع الأحمال في المخطط الإنشائي قبل البدء في التفاصيل المعمارية.",
+  "بالنسبة لاستفسارك، يفضل استخدام خرسانة ذات ديمومة عالية في المناطق الرطبة لضمان عمر أطول للمنشأة.",
+  "في تصميم الإضاءة، حاول دائماً دمج الإضاءة الطبيعية مع الإضاءة المخفية (Cove Lighting) لإعطاء مساحة بصرية أكبر.",
+  "إذا كنت تستخدم SketchUp، أنصحك بتنظيم الموديل باستخدام الـ Tags والـ Components لتسهيل عملية الرندر لاحقاً.",
+  "التصميم المودرن يعتمد بشكل كبير على البساطة واستخدام الخامات الطبيعية مثل الرخام والخشب الدافئ.",
+  "تأكد دائماً من مطابقة المخططات المعمارية مع المخططات الميكانيكية والكهربائية (MEP) لتجنب التعارضات في الموقع."
+];
 
-// API key is obtained exclusively from process.env.API_KEY
-// We create the instance inside the service to ensure it always picks up the latest environment config.
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-
-export const ARCH_SYSTEM_INSTRUCTION = `
-You are "Amine" (أمين), a world-class senior engineer and architectural consultant.
-Your expertise covers:
-1. Advanced SketchUp workflows, Ruby API, and professional rendering techniques.
-2. Civil and structural engineering principles.
-3. Interior design, spatial planning, and material science.
-
-Your mission is to help the user solve complex engineering problems and perfect their architectural designs.
-Keep your responses professional, concise, and in Arabic. Be the "expert friend" to the engineer.
-`;
-
-export const chatWithGemini = async (message: string, history: {role: string, parts: string}[]) => {
-  const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview', // Upgraded to Pro for complex engineering tasks
-    contents: [
-      // Correctly map history parts as text strings
-      ...history.map(h => ({ role: h.role, parts: [{ text: h.parts }] })),
-      { role: 'user', parts: [{ text: message }] }
-    ],
-    config: {
-      systemInstruction: ARCH_SYSTEM_INSTRUCTION,
-      temperature: 0.7,
-      thinkingConfig: { thinkingBudget: 4000 } // Added a small thinking budget for better reasoning
-    },
-  });
-  return response.text;
+const keywordResponses: Record<string, string> = {
+  "خرسانة": "عند التعامل مع الخرسانة، تأكد من نسبة الخلط وتجربة الهبوط (Slump Test) لضمان الجودة المطلوبة.",
+  "ديكور": "في الديكور الداخلي، التوازن بين الألوان الباردة والدافئة هو سر النجاح في أي فراغ معماري.",
+  "رندر": "للحصول على أفضل رندر، ركز على جودة الخامات (Textures) وتوزيع الإضاءة الواقعية بدلاً من زيادة الإعدادات.",
+  "تصميم": "التصميم الجيد هو الذي يجمع بين الجمال الوظيفي والاستغلال الأمثل للمساحات المتاحة.",
+  "سكيتش": "برنامج SketchUp رائع للنمذجة السريعة، خاصة إذا استخدمت معه إضافات مثل Enscape أو V-Ray."
 };
 
-export const renderImage = async (base64Image: string, prompt: string, resolution: '1K' | '2K' | '4K' = '1K') => {
-  const ai = getAI();
+export const chatWithGemini = async (message: string, history: any[]) => {
+  // محاكاة تأخير بسيط لجعل التجربة تبدو واقعية
+  await new Promise(resolve => setTimeout(resolve, 1000));
   
-  // High-end prompt enhancement for Pro Image model
-  const enhancedPrompt = `High-end professional architectural visualization. Realistic materials, soft cinematic lighting, 8k resolution, photorealistic textures, global illumination. Scene: ${prompt}`;
-
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-image-preview', // Upgraded to Pro Image for 1K/2K/4K support
-    contents: {
-      parts: [
-        {
-          inlineData: {
-            data: base64Image.split(',')[1],
-            mimeType: 'image/png',
-          },
-        },
-        { text: enhancedPrompt },
-      ],
-    },
-    config: {
-      imageConfig: {
-        aspectRatio: "16:9",
-        imageSize: resolution // Now utilizing the user's resolution choice
-      },
-    },
-  });
-
-  // Iterate to find the image part in the response
-  for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      return `data:image/png;base64,${part.inlineData.data}`;
-    }
+  const lowerMsg = message.toLowerCase();
+  for (const key in keywordResponses) {
+    if (lowerMsg.includes(key)) return keywordResponses[key];
   }
-  return null;
+
+  // رد عشوائي إذا لم توجد كلمة مفتاحية
+  return engineeringResponses[Math.floor(Math.random() * engineeringResponses.length)];
+};
+
+export const renderImage = async (base64Image: string, prompt: string, resolution: string) => {
+  // محاكاة عملية الرندر محلياً
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  
+  // في نسخة المحاكاة، سنعيد نفس الصورة مع إضافة تأثير بسيط عبر Canvas
+  return new Promise<string>((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(base64Image);
+      
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      // رسم الصورة الأصلية
+      ctx.drawImage(img, 0, 0);
+      
+      // إضافة فلتر بسيط "تحسين هندسي"
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.fillStyle = 'rgba(99, 102, 241, 0.1)'; // لمسة زرقاء خفيفة
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // إضافة فلتر إضاءة
+      ctx.globalCompositeOperation = 'soft-light';
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.src = base64Image;
+  });
 };
