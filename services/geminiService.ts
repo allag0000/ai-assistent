@@ -1,10 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
 
-// ملاحظة للمطور: يتم توفير API_KEY تلقائياً في هذه البيئة
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+// المساعد ذكي جداً الآن - نستخدم Gemini 3 Flash للدردشة و 2.5 Flash Image للرندر
+const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
 /**
- * خدمة الدردشة الذكية - مهندس خبير
+ * خدمة الدردشة الذكية - المهندس الاستشاري أمين
  */
 export const chatWithGemini = async (message: string, history: any[]) => {
   const ai = getAI();
@@ -19,31 +19,32 @@ export const chatWithGemini = async (message: string, history: any[]) => {
         { role: "user", parts: [{ text: message }] }
       ],
       config: {
-        systemInstruction: `أنت "أمين"، مساعد ذكاء اصطناعي وخبير هندسي استشاري. 
-        تخصصك يشمل: الهندسة المدنية، المعمارية، التصميم الداخلي، والديكور. 
-        يجب أن تكون إجاباتك:
-        1. احترافية ودقيقة تقنياً.
-        2. باللغة العربية بأسلوب سهل ومحبب.
-        3. قدم نصائح حول الكود الهندسي، المواد، والتصميم الجمالي.
-        4. إذا سُئلت عن أمور غير هندسية، حاول ربطها بالهندسة أو اعتذر بلباقة موضحاً تخصصك.`,
-        temperature: 0.7,
+        systemInstruction: `أنت "أمين"، مهندس استشاري خبير بخبرة تزيد عن 20 عاماً في الهندسة المدنية، المعمارية، والتصميم الداخلي.
+        
+        قواعد التعامل مع المستخدم:
+        1. ابدأ دائماً باحترافية. استخدم مصطلحات هندسية دقيقة (مثل: الإجهادات، العزوم، الكود السعودي SBC، الأحمال الحية والميتة، المخططات التنفيذية Shop Drawings).
+        2. إذا سأل المستخدم سؤالاً إنشائياً، حذره دائماً بضرورة مراجعة مهندس مرخص قبل التنفيذ، ولكن قدم له الإطار النظري الصحيح.
+        3. في التصميم المعماري والديكور، ركز على "الوظيفة تتبع الجمال" (Form follows Function) واقترح مواد حديثة وموفرة للطاقة.
+        4. كن "ذكياً"؛ إذا كانت المعلومة ناقصة، اطلب من المستخدم توضيح (مثل: مساحة الأرض، نوع التربة، الميزانية).
+        5. لغتك هي العربية الاحترافية والواضحة.`,
+        temperature: 0.8,
+        topP: 0.95,
       },
     });
 
     return response.text;
   } catch (error) {
     console.error("Gemini Chat Error:", error);
-    return "عذراً، واجهت مشكلة في معالجة طلبك الهندسي. يرجى المحاولة مرة أخرى.";
+    return "عذراً يا مهندس، حدث خطأ تقني في الاتصال بمحرك الذكاء الاصطناعي. يرجى التأكد من مفتاح API أو المحاولة لاحقاً.";
   }
 };
 
 /**
- * خدمة الرندر البصري - تحويل الصور
+ * خدمة الرندر البصري الاحترافي
  */
 export const renderImage = async (base64Image: string, prompt: string, resolution: string) => {
   const ai = getAI();
   try {
-    // استخراج بيانات base64 الصافية
     const base64Data = base64Image.split(',')[1];
     
     const response = await ai.models.generateContent({
@@ -57,8 +58,13 @@ export const renderImage = async (base64Image: string, prompt: string, resolutio
             },
           },
           {
-            text: `قم بعمل رندر هندسي احترافي لهذه الصورة بناءً على الوصف التالي: ${prompt}. 
-            اجعل النتيجة واقعية جداً (Photorealistic) وبجودة عالية، مع مراعاة الإضاءة والمواد المستخدمة في العمارة الحديثة.`,
+            text: `أنت الآن محرك رندر عالي الجودة (High-End Rendering Engine). 
+            قم بتحويل هذا المخطط أو الصورة إلى رندر واقعي جداً (Hyper-Realistic) بناءً على الوصف التالي: ${prompt}.
+            ركز على:
+            - الإضاءة العالمية (Global Illumination).
+            - دقة الخامات (PBR Textures).
+            - التفاصيل المعمارية الدقيقة.
+            اجعل النتيجة تضاهي V-Ray أو Lumion.`,
           },
         ],
       },
@@ -69,7 +75,6 @@ export const renderImage = async (base64Image: string, prompt: string, resolutio
       }
     });
 
-    // البحث عن جزء الصورة في الرد
     for (const part of response.candidates[0].content.parts) {
       if (part.inlineData) {
         return `data:image/png;base64,${part.inlineData.data}`;
@@ -78,6 +83,6 @@ export const renderImage = async (base64Image: string, prompt: string, resolutio
     return null;
   } catch (error) {
     console.error("Gemini Render Error:", error);
-    throw error;
+    throw new Error("فشل الرندر: " + (error instanceof Error ? error.message : "خطأ غير معروف"));
   }
 };

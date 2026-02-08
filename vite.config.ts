@@ -5,11 +5,16 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   define: {
-    // نستخدم التسمية التقليدية لضمان وصول القيمة من بيئة Netlify إلى الكود أثناء البناء
-    'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
+    // نستخدم fallback لتجنب كسر عملية البناء في Netlify إذا لم يكن المفتاح موجوداً لحظة الـ Build
+    'process.env.API_KEY': JSON.stringify(process.env.API_KEY || '')
+  },
+  server: {
+    port: 3000,
+    host: true
   },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    sourcemap: false
   }
 });
