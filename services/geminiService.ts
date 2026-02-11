@@ -1,88 +1,178 @@
-import { GoogleGenAI } from "@google/genai";
 
-// المساعد ذكي جداً الآن - نستخدم Gemini 3 Flash للدردشة و 2.5 Flash Image للرندر
-const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+import { GoogleGenAI, Type } from "@google/genai";
 
-/**
- * خدمة الدردشة الذكية - المهندس الاستشاري أمين
- */
-export const chatWithGemini = async (message: string, history: any[]) => {
-  const ai = getAI();
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+const IMAGE_MODEL = 'gemini-2.5-flash-image';
+const FLASH_MODEL = 'gemini-3-flash-preview';
+
+export const renderImage = async (base64Image: string, prompt: string) => {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: [
-        ...history.map(h => ({
-          role: h.role,
-          parts: [{ text: h.parts }]
-        })),
-        { role: "user", parts: [{ text: message }] }
-      ],
-      config: {
-        systemInstruction: `أنت "أمين"، مهندس استشاري خبير بخبرة تزيد عن 20 عاماً في الهندسة المدنية، المعمارية، والتصميم الداخلي.
-        
-        قواعد التعامل مع المستخدم:
-        1. ابدأ دائماً باحترافية. استخدم مصطلحات هندسية دقيقة (مثل: الإجهادات، العزوم، الكود السعودي SBC، الأحمال الحية والميتة، المخططات التنفيذية Shop Drawings).
-        2. إذا سأل المستخدم سؤالاً إنشائياً، حذره دائماً بضرورة مراجعة مهندس مرخص قبل التنفيذ، ولكن قدم له الإطار النظري الصحيح.
-        3. في التصميم المعماري والديكور، ركز على "الوظيفة تتبع الجمال" (Form follows Function) واقترح مواد حديثة وموفرة للطاقة.
-        4. كن "ذكياً"؛ إذا كانت المعلومة ناقصة، اطلب من المستخدم توضيح (مثل: مساحة الأرض، نوع التربة، الميزانية).
-        5. لغتك هي العربية الاحترافية والواضحة.`,
-        temperature: 0.8,
-        topP: 0.95,
-      },
-    });
-
-    return response.text;
-  } catch (error) {
-    console.error("Gemini Chat Error:", error);
-    return "عذراً يا مهندس، حدث خطأ تقني في الاتصال بمحرك الذكاء الاصطناعي. يرجى التأكد من مفتاح API أو المحاولة لاحقاً.";
-  }
-};
-
-/**
- * خدمة الرندر البصري الاحترافي
- */
-export const renderImage = async (base64Image: string, prompt: string, resolution: string) => {
-  const ai = getAI();
-  try {
+    const mimeType = base64Image.match(/data:(.*?);/)?.[1] || 'image/jpeg';
     const base64Data = base64Image.split(',')[1];
     
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: IMAGE_MODEL,
       contents: {
         parts: [
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: 'image/png',
-            },
-          },
-          {
-            text: `أنت الآن محرك رندر عالي الجودة (High-End Rendering Engine). 
-            قم بتحويل هذا المخطط أو الصورة إلى رندر واقعي جداً (Hyper-Realistic) بناءً على الوصف التالي: ${prompt}.
-            ركز على:
-            - الإضاءة العالمية (Global Illumination).
-            - دقة الخامات (PBR Textures).
-            - التفاصيل المعمارية الدقيقة.
-            اجعل النتيجة تضاهي V-Ray أو Lumion.`,
-          },
-        ],
-      },
-      config: {
-        imageConfig: {
-          aspectRatio: "16:9",
-        }
+          { inlineData: { data: base64Data, mimeType } },
+          { text: prompt || "تحويل هذا المخطط المعماري إلى رندر واقعي عالي الدقة." }
+        ]
       }
     });
 
-    for (const part of response.candidates[0].content.parts) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
+    if (response.candidates?.[0]?.content?.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        }
+      }
+    }
+    return null;
+  } catch (error: any) {
+    throw error;
+  }
+};
+
+export const refineToLineArt = async (base64Image: string) => {
+  try {
+    const mimeType = base64Image.match(/data:(.*?);/)?.[1] || 'image/png';
+    const base64Data = base64Image.split(',')[1];
+    
+    const response = await ai.models.generateContent({
+      model: IMAGE_MODEL,
+      contents: {
+        parts: [
+          { inlineData: { data: base64Data, mimeType } },
+          { text: "ACT AS A TECHNICAL DRAFTSMAN. Convert to STRICT high-contrast black and white line drawing." }
+        ]
+      }
+    });
+
+    if (response.candidates?.[0]?.content?.parts) {
+      for (const part of response.candidates[0].content.parts) {
+        if (part.inlineData) {
+          return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        }
       }
     }
     return null;
   } catch (error) {
-    console.error("Gemini Render Error:", error);
-    throw new Error("فشل الرندر: " + (error instanceof Error ? error.message : "خطأ غير معروف"));
+    throw error;
+  }
+};
+
+export const chatWithGemini = async (message: string, history: any[], imageBase64?: string) => {
+  try {
+    const parts: any[] = [{ text: message }];
+    if (imageBase64) {
+      const mimeType = imageBase64.match(/data:(.*?);/)?.[1] || 'image/jpeg';
+      const base64Data = imageBase64.split(',')[1];
+      parts.push({ inlineData: { data: base64Data, mimeType } });
+    }
+    
+    const response = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: [...history.map(h => ({ role: h.role, parts: [{ text: h.parts }] })), { role: "user", parts }],
+      config: {
+        systemInstruction: `أنت "ASK AMINE AI"، مساعد هندسي تقني محترف.`,
+        temperature: 0.7,
+      },
+    });
+    return response.text;
+  } catch (error: any) {
+    return "عذراً، حدث خطأ في الاتصال.";
+  }
+};
+
+export const generate3DModelFile = async (base64Image: string, description: string) => {
+  try {
+    const mimeType = base64Image.match(/data:(.*?);/)?.[1] || 'image/png';
+    const base64Data = base64Image.split(',')[1];
+    
+    const response = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: {
+        parts: [
+          { inlineData: { data: base64Data, mimeType } },
+          { text: `ACT AS AN ENGINEERING EXPERT & LIDAR ANALYST. 
+                   Analyze this furniture/object and break it down into geometric primitives for 3D reconstruction.
+                   Description: ${description}.
+                   
+                   REQUIREMENTS:
+                   1. Primitive Breakdown: Identify parts (box, cylinder, sphere).
+                   2. Keypoint Mapping: Define 3D coordinates (x,y,z) and dimensions.
+                   3. Depth Inference: Estimate Z-depth for each part.
+                   4. Symmetry: Flag if parts should be mirrored (e.g., 4 legs).` }
+        ]
+      },
+      config: { 
+        temperature: 0.1,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            primitives: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name: { type: Type.STRING },
+                  type: { type: Type.STRING, description: "box, cylinder, or sphere" },
+                  dimensions: {
+                    type: Type.OBJECT,
+                    properties: {
+                      width: { type: Type.NUMBER },
+                      height: { type: Type.NUMBER },
+                      depth: { type: Type.NUMBER },
+                      radius: { type: Type.NUMBER }
+                    }
+                  },
+                  position: {
+                    type: Type.OBJECT,
+                    properties: {
+                      x: { type: Type.NUMBER },
+                      y: { type: Type.NUMBER },
+                      z: { type: Type.NUMBER }
+                    }
+                  },
+                  rotation: {
+                    type: Type.OBJECT,
+                    properties: {
+                      x: { type: Type.NUMBER },
+                      y: { type: Type.NUMBER },
+                      z: { type: Type.NUMBER }
+                    }
+                  },
+                  symmetry: { type: Type.STRING, description: "none, quadrant (4 legs), or mirror_x" }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return response.text;
+  } catch (error: any) {
+    console.error("3D Generation Error:", error);
+    throw error;
+  }
+};
+
+export const generateDxfPlan = async (svgCode: string) => {
+  try {
+    const response = await ai.models.generateContent({
+      model: FLASH_MODEL,
+      contents: {
+        parts: [
+          { text: `Convert to valid ASCII DXF. SVG: ${svgCode}.` }
+        ]
+      },
+      config: { temperature: 0.1 }
+    });
+    return response.text;
+  } catch (error: any) {
+    throw error;
   }
 };
