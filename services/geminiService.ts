@@ -1,19 +1,33 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY || API_KEY === "") {
-  console.warn("API_KEY is missing. Please set it in Netlify Environment Variables.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY || '' });
-
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
 const FLASH_MODEL = 'gemini-3-flash-preview';
 
-export const renderImage = async (base64Image: string, prompt: string) => {
+/**
+ * دالة مساعدة للحصول على مثيل AI محدث دائماً
+ */
+// Use process.env.API_KEY directly as per guidelines
+const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+async function retryRequest<T>(fn: () => Promise<T>, retries = 2, delay = 2000): Promise<T> {
   try {
+    return await fn();
+  } catch (error: any) {
+    const errorMsg = error?.message || "";
+    const isQuotaError = errorMsg.includes('429') || errorMsg.includes('RESOURCE_EXHAUSTED');
+    
+    if (isQuotaError && retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return retryRequest(fn, retries - 1, delay * 1.5);
+    }
+    throw error;
+  }
+}
+
+export const renderImage = async (base64Image: string, prompt: string) => {
+  return retryRequest(async () => {
+    const ai = getAI();
     const mimeType = base64Image.match(/data:(.*?);/)?.[1] || 'image/jpeg';
     const base64Data = base64Image.split(',')[1];
     
@@ -35,14 +49,12 @@ export const renderImage = async (base64Image: string, prompt: string) => {
       }
     }
     return null;
-  } catch (error: any) {
-    console.error("Gemini Render Error:", error);
-    throw error;
-  }
+  });
 };
 
 export const refineToLineArt = async (base64Image: string) => {
-  try {
+  return retryRequest(async () => {
+    const ai = getAI();
     const mimeType = base64Image.match(/data:(.*?);/)?.[1] || 'image/png';
     const base64Data = base64Image.split(',')[1];
     
@@ -64,13 +76,12 @@ export const refineToLineArt = async (base64Image: string) => {
       }
     }
     return null;
-  } catch (error) {
-    throw error;
-  }
+  });
 };
 
 export const chatWithGemini = async (message: string, history: any[], imageBase64?: string) => {
-  try {
+  return retryRequest(async () => {
+    const ai = getAI();
     const parts: any[] = [{ text: message }];
     if (imageBase64) {
       const mimeType = imageBase64.match(/data:(.*?);/)?.[1] || 'image/jpeg';
@@ -82,18 +93,17 @@ export const chatWithGemini = async (message: string, history: any[], imageBase6
       model: FLASH_MODEL,
       contents: [...history.map(h => ({ role: h.role, parts: [{ text: h.parts }] })), { role: "user", parts }],
       config: {
-        systemInstruction: `أنت "ASK AMINE AI"، مساعد هندسي تقني محترف.`,
+        systemInstruction: `أنت "ASK AMINE AI"، مساعد هندسي تقني خبير. أجب بلغة هندسية احترافية.`,
         temperature: 0.7,
       },
     });
     return response.text;
-  } catch (error: any) {
-    return "عذراً، حدث خطأ في الاتصال. تأكد من إعدادات API Key.";
-  }
+  });
 };
 
 export const generate3DModelFile = async (base64Image: string, description: string) => {
-  try {
+  return retryRequest(async () => {
+    const ai = getAI();
     const mimeType = base64Image.match(/data:(.*?);/)?.[1] || 'image/png';
     const base64Data = base64Image.split(',')[1];
     
@@ -134,16 +144,7 @@ export const generate3DModelFile = async (base64Image: string, description: stri
                       y: { type: Type.NUMBER },
                       z: { type: Type.NUMBER }
                     }
-                  },
-                  rotation: {
-                    type: Type.OBJECT,
-                    properties: {
-                      x: { type: Type.NUMBER },
-                      y: { type: Type.NUMBER },
-                      z: { type: Type.NUMBER }
-                    }
-                  },
-                  symmetry: { type: Type.STRING }
+                  }
                 }
               }
             }
@@ -153,25 +154,21 @@ export const generate3DModelFile = async (base64Image: string, description: stri
     });
 
     return response.text;
-  } catch (error: any) {
-    console.error("3D Generation Error:", error);
-    throw error;
-  }
+  });
 };
 
 export const generateDxfPlan = async (svgCode: string) => {
-  try {
+  return retryRequest(async () => {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: FLASH_MODEL,
       contents: {
         parts: [
-          { text: `Convert to valid ASCII DXF. SVG: ${svgCode}.` }
+          { text: `Convert this SVG vector to a standard ASCII DXF R12 format. SVG: ${svgCode}.` }
         ]
       },
       config: { temperature: 0.1 }
     });
     return response.text;
-  } catch (error: any) {
-    throw error;
-  }
+  });
 };

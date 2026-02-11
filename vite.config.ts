@@ -1,3 +1,4 @@
+
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -5,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   define: {
-    // نستخدم fallback لتجنب كسر عملية البناء في Netlify إذا لم يكن المفتاح موجوداً لحظة الـ Build
+    // تعريف المتغير محلياً ليعمل في أي بيئة تشغيل
     'process.env.API_KEY': JSON.stringify(process.env.API_KEY || '')
   },
   server: {

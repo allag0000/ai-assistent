@@ -53,7 +53,7 @@ const VectorFactory: React.FC = () => {
         setCurrentStep('sketchify');
       }
     } catch (err: any) {
-      setError("خطأ في تنقية الخطوط. تأكد من إعدادات Netlify Environment Variables.");
+      setError("تعذر تنقية خطوط المخطط. تأكد من وضوح الصورة المرفوعة.");
     } finally {
       setIsProcessing(false);
     }
@@ -83,7 +83,7 @@ const VectorFactory: React.FC = () => {
         options
       );
     } catch (err: any) {
-      setError("فشل التحويل الشعاعي.");
+      setError("فشل التحويل إلى صيغة شعاعية (Vector).");
       setIsProcessing(false);
     }
   };
@@ -98,7 +98,7 @@ const VectorFactory: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = `plan_${Date.now()}.dxf`; a.click();
     } catch (err: any) {
-      setError("خطأ في تصدير CAD");
+      setError("خطأ في إنشاء ملف CAD. يرجى مراجعة المخطط.");
     } finally {
       setIsExportingDxf(false);
     }
@@ -118,7 +118,7 @@ const VectorFactory: React.FC = () => {
         <h2 className="text-lg font-bold text-white flex items-center justify-center gap-2">
           <PenTool className="text-indigo-400" size={20} /> محول المخططات الذكي
         </h2>
-        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">High-Precision Vectorization (Hybrid AI)</p>
+        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">تحويل عالي الدقة (Hybrid AI)</p>
       </div>
 
       <div className="flex flex-col gap-4">
@@ -144,7 +144,7 @@ const VectorFactory: React.FC = () => {
             {(isProcessing || isExportingDxf) && (
               <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center gap-4">
                 <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
-                <p className="text-[10px] text-white font-bold uppercase tracking-[0.2em]">جاري المعالجة...</p>
+                <p className="text-[10px] text-white font-bold uppercase tracking-[0.2em]">جاري معالجة البيانات...</p>
               </div>
             )}
           </div>

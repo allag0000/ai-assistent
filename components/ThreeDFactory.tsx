@@ -169,20 +169,20 @@ const ThreeDFactory: React.FC = () => {
     setError(null);
     
     try {
-      setGenStep('Analysing Primitives...');
+      setGenStep('جاري تحليل الكتلة...');
       const result = await generate3DModelFile(image, description);
       const data = JSON.parse(result);
       
       if (!data.primitives) throw new Error("لم يتم العثور على بيانات هندسية صالحة");
 
-      setGenStep('Reconstructing Geometry...');
+      setGenStep('إعادة بناء الأشكال...');
       setTimeout(() => {
         setModelData(data);
         setIsGenerating(false);
       }, 800);
 
     } catch (err: any) {
-      setError("فشل التحليل الهندسي. تأكد من ضبط API_KEY في إعدادات Netlify.");
+      setError("تعذر إكمال التحليل الهندسي حالياً. تأكد من جودة الصورة وحاول مرة أخرى.");
       setIsGenerating(false);
     }
   };
@@ -226,7 +226,7 @@ const ThreeDFactory: React.FC = () => {
              <Cpu className="absolute inset-0 m-auto text-indigo-400 animate-pulse" size={16} />
           </div>
           <p className="text-xs text-white font-bold tracking-widest uppercase mb-1">{genStep}</p>
-          <p className="text-[8px] text-slate-500 font-medium">Symmetry & Topology Logic Applied</p>
+          <p className="text-[8px] text-slate-500 font-medium">نظام التماثل والتحليل السطحي مفعل</p>
         </div>
       ) : modelData ? (
         <div className="flex gap-4">
