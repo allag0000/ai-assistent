@@ -5,17 +5,14 @@ import {
   Download, 
   Loader2, 
   Cpu, 
-  ArrowUpCircle, 
   RotateCcw, 
   AlertCircle, 
   Zap,
-  Box,
   Layers,
   Maximize
 } from 'lucide-react';
-import * as THREE from 'https://esm.sh/three@0.160.0';
-import { OrbitControls } from 'https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js';
-import { OBJExporter } from 'https://esm.sh/three@0.160.0/examples/jsm/exporters/OBJExporter.js';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { generate3DModelFile } from '../services/geminiService';
 
 interface PrimitiveData {
@@ -29,17 +26,15 @@ interface PrimitiveData {
 
 const ModelViewer: React.FC<{ modelData: { primitives: PrimitiveData[] } }> = ({ modelData }) => {
   const mountRef = useRef<HTMLDivElement>(null);
-  const [sceneRef, setSceneRef] = useState<THREE.Scene | null>(null);
 
   useEffect(() => {
-    if (!mountRef.current || !modelData) return;
+    if (!mountRef.current || !modelData || !Array.isArray(modelData.primitives)) return;
 
     const width = mountRef.current.clientWidth;
     const height = mountRef.current.clientHeight;
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x020617);
-    setSceneRef(scene);
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
     camera.position.set(5, 5, 5);
@@ -52,20 +47,14 @@ const ModelViewer: React.FC<{ modelData: { primitives: PrimitiveData[] } }> = ({
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
-    // إضاءة احترافية لإظهار الكتل
     scene.add(new THREE.AmbientLight(0xffffff, 0.5));
     const light1 = new THREE.DirectionalLight(0xffffff, 1);
     light1.position.set(5, 10, 7);
     scene.add(light1);
-    const light2 = new THREE.PointLight(0x6366f1, 1);
-    light2.position.set(-5, 5, -5);
-    scene.add(light2);
-
-    // إضافة شبكة أرضية
+    
     const grid = new THREE.GridHelper(10, 10, 0x1e293b, 0x0f172a);
     scene.add(grid);
 
-    // محرك إعادة البناء (Reconstruction Engine)
     const group = new THREE.Group();
     const material = new THREE.MeshPhysicalMaterial({ 
       color: 0x6366f1, 
@@ -75,40 +64,47 @@ const ModelViewer: React.FC<{ modelData: { primitives: PrimitiveData[] } }> = ({
       reflectivity: 0.5
     });
 
+    const geometries: THREE.BufferGeometry[] = [];
+
     modelData.primitives.forEach((p) => {
+      if (!p) return;
+
+      const dims = p.dimensions || {};
+      const pos = p.position || { x: 0, y: 0, z: 0 };
+      const rot = p.rotation || { x: 0, y: 0, z: 0 };
+      
       let geometry: THREE.BufferGeometry;
       
       switch(p.type) {
         case 'cylinder':
-          geometry = new THREE.CylinderGeometry(p.dimensions.radius || 0.1, p.dimensions.radius || 0.1, p.dimensions.height || 1, 32);
+          geometry = new THREE.CylinderGeometry(dims.radius || 0.1, dims.radius || 0.1, dims.height || 1, 32);
           break;
         case 'sphere':
-          geometry = new THREE.SphereGeometry(p.dimensions.radius || 0.5, 32, 32);
+          geometry = new THREE.SphereGeometry(dims.radius || 0.5, 32, 32);
           break;
         default:
-          geometry = new THREE.BoxGeometry(p.dimensions.width || 1, p.dimensions.height || 1, p.dimensions.depth || 1);
+          geometry = new THREE.BoxGeometry(dims.width || 1, dims.height || 1, dims.depth || 1);
       }
 
-      const createMesh = (pos: {x: number, y: number, z: number}) => {
+      geometries.push(geometry);
+
+      const createMesh = (targetPos: {x: number, y: number, z: number}) => {
         const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.set(pos.x, pos.y, pos.z);
-        if (p.rotation) {
-          mesh.rotation.set(p.rotation.x || 0, p.rotation.y || 0, p.rotation.z || 0);
-        }
+        mesh.position.set(targetPos.x, targetPos.y, targetPos.z);
+        mesh.rotation.set(rot.x || 0, rot.y || 0, rot.z || 0);
         return mesh;
       };
 
-      // تطبيق منطق التماثل (Symmetry Logic)
       if (p.symmetry === 'quadrant') {
         const offsets = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
         offsets.forEach(([mx, mz]) => {
-          group.add(createMesh({ x: p.position.x * mx, y: p.position.y, z: p.position.z * mz }));
+          group.add(createMesh({ x: pos.x * mx, y: pos.y, z: pos.z * mz }));
         });
       } else if (p.symmetry === 'mirror_x') {
-        group.add(createMesh(p.position));
-        group.add(createMesh({ x: -p.position.x, y: p.position.y, z: p.position.z }));
+        group.add(createMesh(pos));
+        group.add(createMesh({ x: -pos.x, y: pos.y, z: pos.z }));
       } else {
-        group.add(createMesh(p.position));
+        group.add(createMesh(pos));
       }
     });
 
@@ -124,8 +120,12 @@ const ModelViewer: React.FC<{ modelData: { primitives: PrimitiveData[] } }> = ({
 
     return () => {
       cancelAnimationFrame(animId);
-      if (mountRef.current) mountRef.current.removeChild(renderer.domElement);
+      if (mountRef.current && renderer.domElement.parentNode === mountRef.current) {
+        mountRef.current.removeChild(renderer.domElement);
+      }
       renderer.dispose();
+      geometries.forEach(g => g.dispose());
+      material.dispose();
     };
   }, [modelData]);
 
@@ -171,10 +171,10 @@ const ThreeDFactory: React.FC = () => {
     try {
       setGenStep('Analysing Primitives...');
       const result = await generate3DModelFile(image, description);
-      
-      setGenStep('Mapping LiDAR Keypoints...');
       const data = JSON.parse(result);
       
+      if (!data.primitives) throw new Error("لم يتم العثور على بيانات هندسية صالحة");
+
       setGenStep('Reconstructing Geometry...');
       setTimeout(() => {
         setModelData(data);
@@ -182,15 +182,9 @@ const ThreeDFactory: React.FC = () => {
       }, 800);
 
     } catch (err: any) {
-      setError("فشل التحليل الهندسي. يرجى التأكد من وضوح صورة القطعة.");
+      setError("فشل التحليل الهندسي. تأكد من ضبط API_KEY في إعدادات Netlify.");
       setIsGenerating(false);
     }
-  };
-
-  const exportOBJ = () => {
-    // هذه الوظيفة تتطلب الوصول للـ scene، سنقوم بعمل تصدير بسيط للبيانات كملف OBJ
-    if (!modelData) return;
-    alert("سيتم تصدير ملف OBJ نظيف مبني على الإحداثيات الهندسية.");
   };
 
   return (
@@ -237,7 +231,7 @@ const ThreeDFactory: React.FC = () => {
       ) : modelData ? (
         <div className="flex gap-4">
           <button 
-            onClick={exportOBJ}
+            onClick={() => alert("سيتم تصدير ملف OBJ نظيف قريباً بناءً على هذه الإحداثيات.")}
             className="flex-1 bg-indigo-600 text-white text-xs font-bold py-5 rounded-2xl flex items-center justify-center gap-2 shadow-xl"
           >
             <Download size={18} /> تحميل OBJ نظيف

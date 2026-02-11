@@ -3,7 +3,6 @@ import React, { useState, useRef } from 'react';
 import { 
   Upload, 
   Download, 
-  Loader2, 
   Trash2, 
   PenTool,
   Zap,
@@ -13,7 +12,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 // @ts-ignore
-import ImageTracer from 'https://esm.sh/imagetracerjs';
+import ImageTracer from 'imagetracerjs';
 import { refineToLineArt, generateDxfPlan } from '../services/geminiService';
 
 type Step = 'upload' | 'sketchify' | 'vectorize';
@@ -48,15 +47,13 @@ const VectorFactory: React.FC = () => {
     setIsProcessing(true);
     setError(null);
     try {
-      // المرحلة الأولى: استخدام Gemini لتنظيف الصورة وتحويلها لأبيض وأسود عالي التباين
       const result = await refineToLineArt(image);
       if (result) {
         setLineArt(result);
         setCurrentStep('sketchify');
       }
     } catch (err: any) {
-      if (err.message?.includes('429')) setError("تجاوزت حد الطلبات. يرجى الانتظار قليلاً.");
-      else setError("خطأ في تنقية الخطوط");
+      setError("خطأ في تنقية الخطوط. تأكد من إعدادات Netlify Environment Variables.");
     } finally {
       setIsProcessing(false);
     }
@@ -65,21 +62,17 @@ const VectorFactory: React.FC = () => {
   const handleVectorize = async () => {
     if (!lineArt || isProcessing) return;
     setIsProcessing(true);
-    setError(null);
     
     try {
-      // المرحلة الثانية: التحويل الشعاعي البرمجي بكسل بكسل باستخدام ImageTracer
-      // نقوم بتحويل الـ Base64 إلى SVG عبر خوارزمية التتبع
       const options = {
-        ltres: 0.1,    // ضبط دقة الخطوط المستقيمة (أقل = أدق)
-        qtres: 0.1,    // ضبط دقة المنحنيات
-        pathomit: 8,   // تجاهل العناصر الصغيرة جداً (الضجيج)
+        ltres: 0.1,
+        qtres: 0.1,
+        pathomit: 8,
         strokewidth: 1,
-        colorsampling: 0, // أبيض وأسود فقط
+        colorsampling: 0,
         numberofcolors: 2
       };
 
-      // تحويل الصورة برمجياً
       ImageTracer.imageToSVG(
         lineArt,
         (svgString: string) => {
@@ -90,7 +83,7 @@ const VectorFactory: React.FC = () => {
         options
       );
     } catch (err: any) {
-      setError("فشل التحويل الشعاعي البرمجي.");
+      setError("فشل التحويل الشعاعي.");
       setIsProcessing(false);
     }
   };
@@ -98,9 +91,7 @@ const VectorFactory: React.FC = () => {
   const handleDxfExport = async () => {
     if (!svgContent || isExportingDxf) return;
     setIsExportingDxf(true);
-    setError(null);
     try {
-      // إرسال الـ SVG المولد بدقة عالية إلى Gemini لتحويله إلى DXF صالح للاوتوكاد
       const dxfText = await generateDxfPlan(svgContent);
       const cleanDxf = dxfText.replace(/```[a-z]*\n?/gi, '').replace(/```/g, '').trim();
       const blob = new Blob([cleanDxf], { type: 'application/dxf' });
@@ -139,7 +130,6 @@ const VectorFactory: React.FC = () => {
                   <Upload className="text-slate-500 group-hover:text-indigo-400" size={32} />
                 </div>
                 <p className="text-xs text-slate-500 font-bold">ارفع صورة المخطط أو المسودة</p>
-                <p className="text-[9px] text-slate-600 mt-2 uppercase tracking-tighter">Support: JPG, PNG, WEBP</p>
               </div>
             ) : svgContent ? (
               <div className="w-full h-full bg-white p-6 flex items-center justify-center">
@@ -153,16 +143,8 @@ const VectorFactory: React.FC = () => {
             
             {(isProcessing || isExportingDxf) && (
               <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center gap-4">
-                <div className="relative">
-                  <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
-                  <Zap className="absolute inset-0 m-auto text-indigo-400 animate-pulse" size={16} />
-                </div>
-                <div className="text-center">
-                  <p className="text-[10px] text-white font-bold uppercase tracking-[0.2em]">
-                    {currentStep === 'upload' ? 'تنقية الخطوط عبر AI' : 'توليد المسارات الشعاعية'}
-                  </p>
-                  <p className="text-[8px] text-slate-500 mt-1 italic">Processing High-Resolution Data...</p>
-                </div>
+                <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+                <p className="text-[10px] text-white font-bold uppercase tracking-[0.2em]">جاري المعالجة...</p>
               </div>
             )}
           </div>
@@ -176,16 +158,16 @@ const VectorFactory: React.FC = () => {
 
         <div className="space-y-4">
           {currentStep === 'upload' && image && (
-            <button onClick={handleSketchify} className="group w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-5 rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-indigo-600/20 transition-all active:scale-95">
-              <Split size={20} className="group-hover:rotate-12 transition-transform" /> 
+            <button onClick={handleSketchify} className="group w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-5 rounded-2xl flex items-center justify-center gap-3 shadow-xl transition-all">
+              <Split size={20} /> 
               <span>1. تنقية المخطط (AI Cleaning)</span>
             </button>
           )}
 
           {currentStep === 'sketchify' && lineArt && (
-            <button onClick={handleVectorize} className="group w-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold py-5 rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-emerald-600/20 transition-all active:scale-95">
-              <Zap size={20} className="animate-pulse" /> 
-              <span>2. تحويل شعاعي بدقة Pixel-Perfect</span>
+            <button onClick={handleVectorize} className="group w-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold py-5 rounded-2xl flex items-center justify-center gap-3 shadow-xl transition-all">
+              <Zap size={20} /> 
+              <span>2. تحويل شعاعي (Vectorize)</span>
             </button>
           )}
 
@@ -199,20 +181,14 @@ const VectorFactory: React.FC = () => {
                   onClick={() => {
                     const blob = new Blob([svgContent], { type: 'image/svg+xml' });
                     const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a'); a.href = url; a.download = `vector_plan_${Date.now()}.svg`; a.click();
+                    const a = document.createElement('a'); a.href = url; a.download = `vector_${Date.now()}.svg`; a.click();
                   }}
-                  className="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-5 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all border border-white/5"
+                  className="bg-slate-800 text-white text-xs font-bold py-5 rounded-2xl flex flex-col items-center justify-center gap-2"
                 >
-                  <Download size={18} className="text-indigo-400" />
-                  تحميل SVG
+                  <Download size={18} /> تحميل SVG
                 </button>
-                <button 
-                  onClick={handleDxfExport} 
-                  disabled={isExportingDxf} 
-                  className="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold py-5 rounded-2xl flex flex-col items-center justify-center gap-2 transition-all border border-white/5 disabled:opacity-50"
-                >
-                  <Settings size={18} className="text-amber-400" />
-                  تصدير DXF (CAD)
+                <button onClick={handleDxfExport} disabled={isExportingDxf} className="bg-slate-800 text-white text-xs font-bold py-5 rounded-2xl flex flex-col items-center justify-center gap-2">
+                  <Settings size={18} /> تصدير DXF
                 </button>
               </div>
             </div>
@@ -223,27 +199,9 @@ const VectorFactory: React.FC = () => {
       <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
       
       {error && (
-        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-[10px] text-center font-bold flex items-center gap-2 justify-center animate-in fade-in slide-in-from-bottom-2">
-          <AlertCircle size={14} />
+        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-[10px] text-center font-bold">
+          <AlertCircle size={14} className="inline ml-2" />
           {error}
-        </div>
-      )}
-
-      {currentStep === 'upload' && !image && (
-        <div className="p-6 bg-indigo-500/5 border border-indigo-500/10 rounded-3xl">
-          <h4 className="text-[10px] font-bold text-indigo-400 uppercase mb-3 flex items-center gap-2">
-            <Zap size={12} /> كيف يعمل النظام الهجين؟
-          </h4>
-          <ul className="space-y-2">
-            <li className="flex gap-3 items-start">
-              <span className="w-4 h-4 rounded-full bg-indigo-500/20 flex items-center justify-center text-[8px] text-indigo-400 font-bold shrink-0 mt-0.5">1</span>
-              <p className="text-[10px] text-slate-400 leading-relaxed">يقوم <span className="text-slate-200">Gemini AI</span> بتحليل الصورة وإزالة التظليل والشوائب لتحويلها لخطوط نقية.</p>
-            </li>
-            <li className="flex gap-3 items-start">
-              <span className="w-4 h-4 rounded-full bg-indigo-500/20 flex items-center justify-center text-[8px] text-indigo-400 font-bold shrink-0 mt-0.5">2</span>
-              <p className="text-[10px] text-slate-400 leading-relaxed">تقوم خوارزمية <span className="text-slate-200">ImageTracer</span> بتتبع كل بكسل لتحويله لمسار هندسي (Vector Path) بدقة 0.1.</p>
-            </li>
-          </ul>
         </div>
       )}
     </div>

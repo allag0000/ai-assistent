@@ -1,7 +1,13 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const API_KEY = process.env.API_KEY;
+
+if (!API_KEY || API_KEY === "") {
+  console.warn("API_KEY is missing. Please set it in Netlify Environment Variables.");
+}
+
+const ai = new GoogleGenAI({ apiKey: API_KEY || '' });
 
 const IMAGE_MODEL = 'gemini-2.5-flash-image';
 const FLASH_MODEL = 'gemini-3-flash-preview';
@@ -30,6 +36,7 @@ export const renderImage = async (base64Image: string, prompt: string) => {
     }
     return null;
   } catch (error: any) {
+    console.error("Gemini Render Error:", error);
     throw error;
   }
 };
@@ -81,7 +88,7 @@ export const chatWithGemini = async (message: string, history: any[], imageBase6
     });
     return response.text;
   } catch (error: any) {
-    return "عذراً، حدث خطأ في الاتصال.";
+    return "عذراً، حدث خطأ في الاتصال. تأكد من إعدادات API Key.";
   }
 };
 
@@ -95,15 +102,7 @@ export const generate3DModelFile = async (base64Image: string, description: stri
       contents: {
         parts: [
           { inlineData: { data: base64Data, mimeType } },
-          { text: `ACT AS AN ENGINEERING EXPERT & LIDAR ANALYST. 
-                   Analyze this furniture/object and break it down into geometric primitives for 3D reconstruction.
-                   Description: ${description}.
-                   
-                   REQUIREMENTS:
-                   1. Primitive Breakdown: Identify parts (box, cylinder, sphere).
-                   2. Keypoint Mapping: Define 3D coordinates (x,y,z) and dimensions.
-                   3. Depth Inference: Estimate Z-depth for each part.
-                   4. Symmetry: Flag if parts should be mirrored (e.g., 4 legs).` }
+          { text: `Analyze this object for 3D reconstruction. Description: ${description}` }
         ]
       },
       config: { 
@@ -118,7 +117,7 @@ export const generate3DModelFile = async (base64Image: string, description: stri
                 type: Type.OBJECT,
                 properties: {
                   name: { type: Type.STRING },
-                  type: { type: Type.STRING, description: "box, cylinder, or sphere" },
+                  type: { type: Type.STRING },
                   dimensions: {
                     type: Type.OBJECT,
                     properties: {
@@ -144,7 +143,7 @@ export const generate3DModelFile = async (base64Image: string, description: stri
                       z: { type: Type.NUMBER }
                     }
                   },
-                  symmetry: { type: Type.STRING, description: "none, quadrant (4 legs), or mirror_x" }
+                  symmetry: { type: Type.STRING }
                 }
               }
             }
